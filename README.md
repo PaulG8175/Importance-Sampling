@@ -1,113 +1,133 @@
-# 🎯 PRB222 — Échantillonnage Préférentiel (Importance Sampling)
+# Importance Sampling for Exotic Option Pricing
 
-Projet numérique portant sur une méthode générique de réduction de variance par **échantillonnage préférentiel**, appliquée au pricing d'options vanilles et exotiques dans le modèle de Black-Scholes.
+> 🚀 **Personal project**, done independently outside coursework.
 
----
-
-## 🎯 Objectif
-
-Minimiser la variance de l'estimateur Monte Carlo en cherchant le shift optimal **θ\*** tel que :
-
-```
-E[g(X)] = E[g(X + θ) · exp(−θ·X − ½|θ|²)]
-```
-
-θ\* est estimé par un **algorithme de Newton** appliqué au gradient empirique de la variance.
+Implementation of **Importance Sampling (IS)** — a generic variance reduction technique for Monte Carlo estimation — applied to vanilla and exotic option pricing in a multi-dimensional Black-Scholes model. Particularly effective for **deep out-of-the-money options** where standard MC wastes almost all samples in the zero-payoff region.
 
 ---
 
-## 📂 Structure
+## Core idea
 
-```
-├── importance_sampling_commented.py   # Script principal commenté
-```
+For any $g$ and $\theta \in \mathbb{R}^n$:
 
----
+$$\mathbb{E}[g(X)] = \mathbb{E}\left[g(X+\theta)\*e^{-\theta \cdot X - \frac{1}{2}|\theta|^2}\right], \quad X \sim \mathcal{N}(0, I_n)$$
 
-## ⚙️ Modèle
+The estimator variance depends on $\theta$. The **optimal shift** $\theta^*$ minimises:
 
-Black-Scholes en dimension 3 :
+$$\theta^* = \underset{\theta \in \mathbb{R}^n}{\arg\min}\text{Var}\left(g(X+\theta)\*e^{-\theta \cdot X - \frac{1}{2}|\theta|^2}\right)$$
 
-```
-dSi(t) = Si(t)(r dt + σi dWi(t))
-```
+**Gradient of the variance:**
+$$\nabla_\theta\,\text{Var}(f(\theta,X)) = \mathbb{E}\left[(\theta - X)\*g(X)^2\*e^{-\theta\cdot X + \frac{1}{2}|\theta|^2}\right]$$
 
-avec W = (W1, W2, W3) browniens corrélés de matrice :
-
-```
-Γ = [[1,   ρ12, ρ13],
-     [ρ12,  1,  ρ23],
-     [ρ13, ρ23,  1 ]]
-```
-
-Simulation via décomposition de **Cholesky** : `W(T) = √T · L · X`, avec `X ~ N(0, I3)`.
+$\theta^*$ is estimated via a **Newton algorithm** on the empirical gradient $u_N(\theta) = 0$.
 
 ---
 
-## ⚙️ Paramètres
+## Newton algorithm
 
-### Option vanille (Q6–Q10)
+$$\begin{cases} \theta_0^N = 0 \\ u_N(\theta_j^N) + \nabla u_N(\theta_j^N)\cdot(\theta_{j+1}^N - \theta_j^N) = 0 \end{cases}$$
 
-| Paramètre | Valeur |
-|-----------|--------|
-| `S1,0` | 1 |
+The same draws $(X_i)$ are reused across all iterations to avoid instability from sampling noise.
+
+---
+
+## Model
+
+3-dimensional Black-Scholes with correlated Brownian motions:
+
+$$dS_i(t) = S_i(t)\left(r\*dt + \sigma_i\*dW_i(t)\right)$$
+
+$$
+\Gamma =
+\left[
+\begin{array}{ccc}
+1 & \rho_{12} & \rho_{13} \\
+\rho_{12} & 1 & \rho_{23} \\
+\rho_{13} & \rho_{23} & 1
+\end{array}
+\right]
+$$
+
+In the IS framework: $W(T) = \sqrt{T}\,L\,X$ with $\Gamma = LL^\top$ (Cholesky), $X \sim \mathcal{N}(0, I_3)$.
+
+---
+
+## Parameters
+
+### Vanilla call (Q6–Q10)
+
+| Parameter | Value |
+|-----------|-------|
+| `S₁,₀` | 1 |
 | `σ` | 0.30 |
 | `r` | 0.01 |
-| `T` | 2 ans |
-| `K` | 1 (puis 0.35 à 2.5) |
+| `T` | 2 years |
+| `K` | 1 → 2.5 |
 
-### Options exotiques (Q12–Q13)
+### Exotic options (Q12–Q13)
 
-| Paramètre | Valeur |
-|-----------|--------|
-| `Si,0` | 1 |
-| `λi` | 1/3 |
+| Parameter | Value |
+|-----------|-------|
+| `Sᵢ,₀` | 1 |
+| `λᵢ` | 1/3 |
 | `K` | 1.25 |
-| `T` | 1 an |
+| `T` | 1 year |
 | `σ` | (0.25, 0.28, 0.30) |
-| `ρij` | 0.5 |
+| `ρᵢⱼ` | 0.5 |
 
-> Les simulations utilisent uniquement des lois **Uniformes** via la méthode de Box-Muller.
+> All simulations use **Uniform random variables only** via Box-Muller transform.
 
 ---
 
-## 📋 Questions traitées
+## Key results
 
-| Q | Contenu |
+**Convergence of θ* vs K:**
+
+- $K$ small (ITM): $\theta^* \approx 0$ — standard MC already efficient
+- $K$ large (deep OTM): $\theta^* \gg 0$ — large shift needed to reach the payoff region; IS reduces variance by several orders of magnitude
+
+**Standard deviation reduction (vanilla, K=2.5):**
+
+IS converges orders of magnitude faster than standard MC for deep OTM options — the shift $\theta^*$ redirects samples toward the non-zero payoff region.
+
+---
+
+## Options covered
+
+### Basket Call
+$$h(x_1, x_2, x_3) = \left(\lambda_1 x_1 + \lambda_2 x_2 + \lambda_3 x_3 - K\right)^+$$
+
+### Symphony option
+$$h(x_1,x_2,x_3) = \left[\frac{1}{2}\max(x_i-K) + \frac{1}{2}\min(x_i-K) - \text{median}(x_i-K)\right]^+$$
+
+---
+
+## Topics covered
+
+| Q | Content |
 |---|---------|
-| Q1 | Solution de l'EDS Si(t) |
-| Q2 | Preuve du changement de mesure (IS) |
-| Q3 | Gradient de la variance par rapport à θ |
-| Q4 | Identification du payoff (call européen) |
-| Q5 | Prix analytique Black-Scholes |
-| Q6 | Algorithme de Newton pour estimer θ\* |
-| Q7 | Estimateur IS par Monte Carlo |
-| Q8 | Convergence de la suite (θj) pour différents K |
-| Q9 | Réduction de l'écart-type empirique au fil des itérations |
-| Q10 | Comparaison MC standard vs IS pour K=2.5 (option OTM) |
-| Q11 | Extension en dimension 3 pour options exotiques |
-| Q12 | Call panier : IS vs MC standard |
-| Q13 | Option Symphonie : IS vs MC standard |
-| Q14 | Variable de contrôle via parité call-put panier |
+| Q2 | Proof of the IS change of measure |
+| Q3 | Gradient of variance w.r.t. θ |
+| Q5 | Black-Scholes analytical price |
+| Q6 | Newton algorithm for θ* (1D) |
+| Q7 | IS Monte Carlo estimator |
+| Q8 | Convergence of (θⱼ) for K ∈ {0.35, …, 2.5} |
+| Q9 | Standard deviation reduction across iterations |
+| Q10 | IS vs standard MC for K=2.5 (deep OTM) |
+| Q11 | Extension to dimension 3 |
+| Q12 | Basket call: IS vs standard MC |
+| Q13 | Symphony option: IS vs standard MC |
+| Q14 | Control variate via put-call parity |
 
 ---
 
-## 🔑 Idée clé
-
-Pour une option **OTM** (K grand), le MC standard gaspille presque tous ses tirages dans la zone de payoff nul. Le shift θ\* > 0 déplace les gaussiennes vers cette zone, réduisant drastiquement la variance.
-
----
-
-## 🚀 Lancement
+## Run
 
 ```bash
 pip install numpy matplotlib
 python importance_sampling_commented.py
 ```
 
----
+## Dependencies
 
-## 📦 Dépendances
-
-- `numpy`
-- `matplotlib`
+`numpy` · `matplotlib`
