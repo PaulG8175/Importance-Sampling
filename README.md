@@ -1,6 +1,6 @@
 # Importance Sampling for Exotic Option Pricing
 
-> 🚀 **Personal project**, done independently outside coursework.
+> **Personal project**, done independently outside coursework.
 
 Implementation of **Importance Sampling (IS)** — a generic variance reduction technique for Monte Carlo estimation — applied to vanilla and exotic option pricing in a multi-dimensional Black-Scholes model. Particularly effective for **deep out-of-the-money options** where standard MC wastes almost all samples in the zero-payoff region.
 
@@ -39,16 +39,16 @@ $$dS_i(t) = S_i(t)\left(r\*dt + \sigma_i\*dW_i(t)\right)$$
 
 $$
 \Gamma =
-\left[
+\left(
 \begin{array}{ccc}
 1 & \rho_{12} & \rho_{13} \\
 \rho_{12} & 1 & \rho_{23} \\
 \rho_{13} & \rho_{23} & 1
 \end{array}
-\right]
+\right)
 $$
 
-In the IS framework: $W(T) = \sqrt{T}\,L\,X$ with $\Gamma = LL^\top$ (Cholesky), $X \sim \mathcal{N}(0, I_3)$.
+In the IS framework: $W(T) = \sqrt{T}\*L\*X$ with $\Gamma = LL^\top$ (Cholesky), $X \sim \mathcal{N}(0, I_3)$.
 
 ---
 
@@ -83,16 +83,10 @@ In the IS framework: $W(T) = \sqrt{T}\,L\,X$ with $\Gamma = LL^\top$ (Cholesky),
 
 **Convergence of θ* vs K:**
 
-- $K$ small (ITM): $\theta^* \approx 0$ — standard MC already efficient
-- $K$ large (deep OTM): $\theta^* \gg 0$ — large shift needed to reach the payoff region; IS reduces variance by several orders of magnitude
+- K small (ITM): θ* ≈ 0 — standard MC already efficient
+- K large (deep OTM): θ* >> 0 — large shift needed to reach the payoff region; IS reduces variance by several orders of magnitude
 
-**Standard deviation reduction (vanilla, K=2.5):**
-
-IS converges orders of magnitude faster than standard MC for deep OTM options — the shift $\theta^*$ redirects samples toward the non-zero payoff region.
-
----
-
-## Options covered
+**Options covered:**
 
 ### Basket Call
 $$h(x_1, x_2, x_3) = \left(\lambda_1 x_1 + \lambda_2 x_2 + \lambda_3 x_3 - K\right)^+$$
